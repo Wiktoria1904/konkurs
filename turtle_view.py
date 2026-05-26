@@ -1,35 +1,53 @@
+import turtle
 import constants
-from world import Coordinates, World
-from rover import Rover
 
-def test_basic_movement():
-    world = World(width=100, height=100)
-    start_coords = Coordinates(0, 0)
-    rover = Rover(name="Test", position=start_coords, angle=0, fuel=100, max_fuel=150)
+class TurtleView:
+    """Odpowiada za wizualizację świata i łazika przy użyciu modułu turtle."""
 
-    # Test movement forward
-    dist = 10
-    rover.move(dist)
-    assert rover.position.x == 10.0
-    assert rover.position.y == 0.0
-    # Fuel: 100 - (10 * 0.5) = 95.0
-    assert rover.fuel == 95.0
+    def __init__(self):
+        self.screen = turtle.Screen()
+        self.rover_turtle = turtle.Turtle()
+        self.bounds_turtle = turtle.Turtle()
 
-    # Test rotation
-    rover.rotate(90)
-    assert rover.angle == 90.0
+    def setup_world(self, width, height):
+        """Konfiguruje okno i rysuje granice świata."""
+        self.screen.clear()
+        self.screen.setup(width + constants.MARGIN * 2, height + constants.MARGIN * 2)
+        self.screen.title("Symulator Łazika")
+        self.screen.tracer(0)
 
-    print("Podstawowe testy jednostkowe zaliczone!")
+        # Rysowanie granic
+        self.bounds_turtle.hideturtle()
+        self.bounds_turtle.penup()
+        self.bounds_turtle.color(constants.COLOR_BOUNDS)
+        self.bounds_turtle.pensize(constants.PEN_SIZE)
 
-def test_out_of_bounds():
-    world = World(width=100, height=100)
-    pos_inside = Coordinates(10, 10)
-    pos_outside = Coordinates(60, 0)
-    
-    assert world.is_out_of_bounds(pos_inside) == False
-    assert world.is_out_of_bounds(pos_outside) == True
-    print("Test granic świata zaliczony!")
+        hw, hh = width / 2, height / 2
+        self.bounds_turtle.goto(-hw, -hh)
+        self.bounds_turtle.pendown()
+        for _ in range(2):
+            self.bounds_turtle.forward(width)
+            self.bounds_turtle.left(90)
+            self.bounds_turtle.forward(height)
+            self.bounds_turtle.left(90)
+        self.bounds_turtle.penup()
 
-if __name__ == "__main__":
-    test_basic_movement()
-    test_out_of_bounds()
+        # Inicjalizacja łazika
+        self.rover_turtle.shape("triangle")
+        self.rover_turtle.color(constants.COLOR_VEHICLE)
+        self.rover_turtle.speed(constants.TURTLE_SPEED)
+        self.screen.update()
+
+    def set_initial_position(self, position, angle):
+        """Ustawia łazik w pozycji startowej."""
+        self.rover_turtle.penup()
+        self.rover_turtle.goto(position.x, position.y)
+        self.rover_turtle.setheading(angle)
+        self.rover_turtle.pendown()
+        self.screen.update()
+
+    def update_rover(self, position, angle):
+        """Aktualizuje pozycję łazika na ekranie."""
+        self.rover_turtle.goto(position.x, position.y)
+        self.rover_turtle.setheading(angle)
+        self.screen.update()
