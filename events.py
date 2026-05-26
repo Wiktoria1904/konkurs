@@ -1,41 +1,61 @@
-# Ustawienia świata
-WORLD_WIDTH = 300.0
-WORLD_HEIGHT = 300.0
-MARGIN = 50
+import random
+import constants
+from world import World, Coordinates
+from rover import Rover
+from typing import List, Tuple
 
-# Ustawienia misji
-DEFAULT_EXPEDITION_NAME = "Rover-1"
-MAX_STEPS = 50
-TARGET_RADIUS = 10.0
-RANDOM_EVENT_CHANCE = 0.15
+class EventManager:
+    """Zarządza elementami świata i zdarzeniami losowymi."""
 
-# Pozycja startowa (domyślne)
-DEFAULT_START_X = 0.0
-DEFAULT_START_Y = 0.0
-DEFAULT_START_ANGLE = 90.0
-DEFAULT_INITIAL_FUEL = 100.0
+    @staticmethod
+    def generate_world_elements(world: World, num_elements: int = constants.NUM_WORLD_ELEMENTS):
+        """Generuje losowe elementy na mapie (paliwo, przeszkody, skróty)."""
+        types = [constants.TYPE_FUEL, constants.TYPE_OBSTACLE, constants.TYPE_SHORTCUT]
+        half_w = int(world.width / 2)
+        half_h = int(world.height / 2)
 
-# Koszty i bonusy energetyczne
-TURN_BASE_COST = 2.0
-MOVE_COST_PER_UNIT = 0.5
-OUT_OF_BOUNDS_PENALTY = 5.0
+        count = 0
+        while count < num_elements:
+            rx = random.randint(-half_w + 10, half_w - 10)
+            ry = random.randint(-half_h + 10, half_h - 10)
+            # Pomijamy środek mapy (okolice startu)
+            if abs(rx) > 15 or abs(ry) > 15:
+                world.add_element(rx, ry, random.choice(types))
+                count += 1
 
-# Elementy świata
-FUEL_BONUS_VALUE = 30.0
-OBSTACLE_PENALTY_VALUE = 20.0
-SHORTCUT_MOVE_DISTANCE = 15.0
-WEATHER_BONUS_VALUE = 10.0
+    @staticmethod
+    def trigger_random_event(rover: Rover) -> str:
+        """Losuje i aplikuje zdarzenie środowiskowe."""
+        events = [
+            ("🌪️ Burza magnetyczna! Tracisz orientację (losowa zmiana kąta).", "BURZA"),
+            ("☀️ Piękna pogoda! Zoptymalizowano zużycie zasobów (+10 paliwa).", "POGODA")
+        ]
+        ev_text, ev_type = random.choice(events)
 
-# Liczba elementów świata
-NUM_WORLD_ELEMENTS = 15
+        if ev_type == "BURZA":
+            rover.angle = random.randint(0, 359)
+        elif ev_type == "POGODA":
+            rover.add_fuel(constants.WEATHER_BONUS_VALUE)
 
-# Typy elementów
-TYPE_FUEL = "PALIWO"
-TYPE_OBSTACLE = "PRZESZKODA"
-TYPE_SHORTCUT = "SKRÓT"
+        return f"[LOSOWE] {ev_text}"
 
-# Kolory i ustawienia widoku
-COLOR_VEHICLE = "blue"
-COLOR_BOUNDS = "red"
-PEN_SIZE = 2
-TURTLE_SPEED = 3
+    @staticmethod
+    def handle_interaction(rover: Rover, world: World) -> List[str]:
+        """Sprawdza i obsługuje interakcje łazika z elementami świata."""
+        journal_entries = []
+        px, py = int(rover.position.x), int(rover.position.y)
+
+        result = world.get_element_at(px, py)
+        if result:
+            pos, elem = result
+            if elem == constants.TYPE_FUEL:
+                rover.add_fuel(constants.FUEL_BONUS_VALUE)
+                journal_entries.append(f"⛽ Znaleziono zbiornik z paliwem! Przywrócono +{constants.FUEL_BONUS_VALUE} pkt.")
+            elif elem == constants.TYPE_OBSTACLE:
+                rover.consume_fuel(constants.OBSTACLE_PENALTY_VALUE)
+                journal_entries.append(f"💥 Pojazd wjechał w trudny teren. Strata -{constants.OBSTACLE_PENALTY_VALUE} pkt paliwa.")
+            elif elem == constants.TYPE_SHORTCUT:
+                rover.move(constants.SHORTCUT_MOVE_DISTANCE)
+                journal_entries.append(f"🌀 Znaleziono bezpieczny skrót! Bezpieczne przyspieszenie o +{constants.SHORTCUT_MOVE_DISTANCE} jednostek.")
+
+        return journal_entries
